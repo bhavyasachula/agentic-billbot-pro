@@ -59,8 +59,8 @@ with st.sidebar:
     st.markdown("---")
     st.subheader("Email Details") 
 
-    config.SMTP_EMAIL = st.text_input("Your Email (Required) ", value=config.SMTP_EMAIL, help="The email address you'll use to send invoices.")
-    config.SMTP_PASSWORD = st.text_input("App Password (Required)", type="password", value=config.SMTP_PASSWORD, help="Your email provider's App Password (not your regular login password).")
+    SMTP_EMAIL = st.text_input("Your Email (Required) ", value=config.SMTP_EMAIL, help="The email address you'll use to send invoices.")
+    SMTP_PASSWORD = st.text_input("App Password (Required)", type="password", value=config.SMTP_PASSWORD, help="Your email provider's App Password (not your regular login password).")
     # config.SMTP_HOST = st.text_input("SMTP Host", value=config.SMTP_HOST)
     # config.SMTP_PORT = int(st.text_input("SMTP Port", value=str(config.SMTP_PORT)))
 
