@@ -16,15 +16,14 @@ def send_email(
     to_email: str,
     subject: str,
     body: str,
-    attachment_bytes: bytes | None = None,
-    attachment_filename: str = "invoice.pdf",
+    attachments: list[dict] | None = None, # List of {"bytes": ..., "name": ...}
 ) -> str:
     """
-    Send an email via SMTP with optional attachment.
+    Send an email via SMTP with optional attachments.
     Returns "ok" on success or an error message on failure.
     """
     if not config.SMTP_EMAIL or not config.SMTP_PASSWORD:
-        return "SMTP credentials not configured. Add them in the .env file."
+        return "Credentials not configured. Add them in the Settings first"
 
     msg = MIMEMultipart()
     msg["From"] = config.SMTP_EMAIL
@@ -33,16 +32,17 @@ def send_email(
 
     msg.attach(MIMEText(body, "plain"))
 
-    # Attach the invoice file if provided
-    if attachment_bytes:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(attachment_bytes)
-        encoders.encode_base64(part)
-        part.add_header(
-            "Content-Disposition",
-            f"attachment; filename={attachment_filename}",
-        )
-        msg.attach(part)
+    # Attach the files if provided
+    if attachments:
+        for attachment in attachments:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(attachment["bytes"])
+            encoders.encode_base64(part)
+            part.add_header(
+                "Content-Disposition",
+                f"attachment; filename={attachment['name']}",
+            )
+            msg.attach(part)
 
     try:
         server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT)
