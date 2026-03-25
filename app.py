@@ -89,32 +89,100 @@ for key in ["agent_result", "subject", "body", "step", "file_bytes", "file_name"
 if "step" not in st.session_state or st.session_state["step"] is None:
     st.session_state["step"] = "upload"
 
-# ─── Extra CSS for Gemini-like feel ─────────────────────
+# ─── Extra CSS for Premium Chat Experience ─────────────────────
 st.markdown("""
 <style>
-    /* Styling the Chat Input area */
-    .stChatInputContainer {
-        padding-bottom: 20px;
-    }
-    
-    /* Chat message bubble improvements */
+    /* Main container smoothing */
     .stChatMessage {
+        animation: fadeIn 0.4s ease-out;
+        margin-bottom: 12px !important;
+        padding: 0 !important;
         background-color: transparent !important;
-        border: none !important;
-    }
-    
-    .stChatMessage [data-testid="stChatMessageContent"] {
-        background-color: #eee;
-        border-radius: 18px;
-        padding: 12px 18px;
-        border: 1px solid #f1f5f9;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
     }
 
-    /* Assistant message different color */
-    div[data-testid="stChatMessage"]:has(path[d*="M20"]) [data-testid="stChatMessageContent"] {
-        background-color: #ffffff;
-        border: 1px solid #e2e8f0;
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* General message content styling */
+    [data-testid="stChatMessageContent"] {
+        padding: 12px 18px !important;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    [data-testid="stChatMessageContent"] p {
+        margin-bottom: 0 !important;
+    }
+
+    /* --- ALIGNMENT FIX (USER RIGHT, AI LEFT) --- */
+    
+    /* Global message container fix */
+    [data-testid="stChatMessage"] {
+        background-color: transparent !important;
+    }
+
+    /* Target BOTH div and section variants */
+    div[data-testid="stChatMessage"]:has([aria-label*="user" i]),
+    section[data-testid="stChatMessage"]:has([aria-label*="user" i]),
+    div[data-testid="stChatMessage"]:has([data-testid*="user" i]),
+    section[data-testid="stChatMessage"]:has([data-testid*="user" i]) {
+        flex-direction: row-reverse !important;
+    }
+
+    /* Force children of user message row-reverse */
+    div[data-testid="stChatMessage"]:has([aria-label*="user" i]) > div,
+    section[data-testid="stChatMessage"]:has([aria-label*="user" i]) > div {
+        flex-direction: row-reverse !important;
+    }
+
+    /* --- MESSAGE BUBBLE AESTHETICS --- */
+    
+    /* General Content (shared padding/font) */
+    [data-testid="stChatMessageContent"] {
+        padding:25px !important;
+        font-size: 0.95rem !important;
+        line-height: 1.5 !important;
+    }
+
+    /* User Message Style (Right) */
+    [data-testid="stChatMessage"]:has([aria-label*="user" i]) [data-testid="stChatMessageContent"] {
+        background-color: #f1f5f9 !important;
+        color: #1e293b !important;
+        border-radius: 20px 20px 4px 20px !important;
+        border: 1px solid #e2e8f0 !important;
+        margin-left: auto !important;
+        max-width: 80% !important;
+    }
+
+    /* Assistant Message Style (Left) */
+    [data-testid="stChatMessage"]:has([aria-label*="assistant" i]) [data-testid="stChatMessageContent"] {
+        background-color: #ffffff !important;
+        color: #1e293b !important;
+        border-radius: 20px 18px 18px 4px !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+        margin-right: auto !important;
+        max-width: 80% !important;
+    }
+
+    /* Hide redundant avatar backgrounds */
+    [data-testid*="chatAvatarIcon"] {
+        background-color: transparent !important;
+    }
+
+    /* Chat input container styling */
+    .stChatInputContainer {
+        border-radius: 12px !important;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.03) !important;
+        background-color: white !important;
+        padding-bottom: 10px !important;
+    }
+
+    /* Smooth transitions for buttons and inputs */
+    button, input, textarea {
+        transition: all 0.2s ease !important;
     }
 </style>
 """, unsafe_allow_html=True)
