@@ -1,0 +1,13 @@
+streamlit
+langgraph
+langchain
+langchain-openai
+langchain-core
+python-dotenv
+pydantic
+PyMuPDF
+Pillow
+numpy==1.26.4
+langchain-groq
+groq
+pytesseract
