@@ -203,7 +203,7 @@ for msg in st.session_state["chat_messages"]:
             st.info(f"📄 Attached: {msg['attachment']}")
 
 # --- Check if credentials are filled ---
-credentials_filled = bool(config.SMTP_EMAIL and config.SMTP_PASSWORD)
+credentials_filled = bool(SMTP_EMAIL and SMTP_PASSWORD)
 
 if not credentials_filled:
     st.warning("⚠️ **Credentials Needed**: Please provide your **Email** and **App Password** in the sidebar to send invoices.")
