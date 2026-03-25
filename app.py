@@ -233,7 +233,7 @@ credentials_filled = bool(st.session_state["smtp_email"] and st.session_state["s
 if not credentials_filled:
     st.warning("⚠️ **Credentials Needed**: Please provide your **Email** and **App Password** in the sidebar to send invoices.")
 
-# --- Chat input with File Attachment (Built-in) ---
+# --- Chat input with File Attachment (Built-in) ----
 prompt_res = st.chat_input(
     "Ask anything...",
     accept_file=True,
