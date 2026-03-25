@@ -122,7 +122,7 @@ st.markdown("""
 # ─── Title ────────────────────────────────────────────────
 
 st.caption("Chat with AI to Process Invoices and Send Emails.")
-st.caption("Wants to Send the Invoice Email? Just Say 'Send this to Customer@gmail.com' you are good to goo.. ")
+st.caption("Wants to Send the Invoice Email? Just Say 'Send this to Customer@gmail.com' And You are Good to goo.. ")
 # ═══════════════════════════════════════════════════════════
 # CHATBOT INTERFACE
 # ═══════════════════════════════════════════════════════════
