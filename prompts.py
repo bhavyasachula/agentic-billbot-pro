@@ -39,7 +39,7 @@ EMAIL COMPOSITION RULES:
 1. **Subject**: Create a subject line in the format: "Invoice {invoice_id} from {sender_name}"
 2. **Title/Header**: Start the email body with a bold title: "**Invoice Summary for {client_name}**"
 3. **The Body**: Summarize the items and total in a clean, professional layout. Avoid unnecessary fluff.
-4. **The Regards**: Use a professional sign-off in the format: "Best regards, {sender_name}" followed by the company name, phone, and email below it.
+4. **The Regards**: Use a professional sign-off in the format: "Best regards, {sender_name}" followed by the {company_name}, phone, and email below it.
 
 Write a clear, professional email with:
 1. A concise subject line
