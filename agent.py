@@ -40,16 +40,16 @@ class GraphState(TypedDict, total=False):
     extracted_data: dict
     email_subject: str
     email_body: str
+    sender_details: dict          # user's sender info
     error: str
 
 
 # ─── LLM ─────────────────────────────────────────────────
 def _get_llm():
     return ChatGroq(
-        api_key=st.secrets["GROQ_API_KEY"],
         model="openai/gpt-oss-120b",
         temperature=config.TEMPERATURE,
-       
+       api_key=st.secrets['GROQ_API_KEY']
     )
 
 
@@ -99,6 +99,7 @@ def draft_email(state: GraphState) -> Dict[str, Any]:
         return {}
 
     data = state["extracted_data"]
+    sender_details = state.get("sender_details", {})
     llm = _get_llm()
 
     # Format line items for the prompt
@@ -109,14 +110,17 @@ def draft_email(state: GraphState) -> Dict[str, Any]:
         else:
             items_str += f"  - {item}\n"
 
-    # Sender Name from extracted data or config
-    sender_name = data.get("sender_name") or config.SENDER_NAME or "the Billing Dept"
+    # Sender info from passed-in details, then fallback to config
+    company_name = sender_details.get("company_name") or config.COMPANY_NAME or "Our Company"
+    sender_name = data.get("sender_name") or sender_details.get("sender_name") or config.SENDER_NAME or "the Billing Dept"
+    sender_phone = sender_details.get("sender_phone") or config.SENDER_PHONE or "N/A"
+    sender_email = sender_details.get("sender_email") or config.SENDER_EMAIL or sender_details.get("smtp_email") or config.SMTP_EMAIL or "N/A"
 
     prompt = EMAIL_DRAFT_PROMPT.format(
         sender_name=sender_name,
-        company_name=config.COMPANY_NAME or "Our Company",
-        sender_phone=config.SENDER_PHONE or "N/A",
-        sender_email=config.SENDER_EMAIL or config.SMTP_EMAIL or "N/A",
+        company_name=company_name,
+        sender_phone=sender_phone,
+        sender_email=sender_email,
         client_name=data.get("client_name", "Customer"),
         invoice_id=data.get("invoice_id", "N/A"),
         line_items=items_str.strip(),
@@ -145,7 +149,10 @@ def build_graph():
     return graph.compile()
 
 
-def run_agent(image_data: List[str]) -> Dict[str, Any]:
+def run_agent(image_data: List[str], sender_details: dict = None) -> Dict[str, Any]:
     """Run the full pipeline. `image_data` is a list of base64-encoded images."""
     app = build_graph()
-    return app.invoke({"image_data": image_data})
+    input_state = {"image_data": image_data}
+    if sender_details:
+        input_state["sender_details"] = sender_details
+    return app.invoke(input_state)

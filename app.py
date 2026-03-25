@@ -54,22 +54,33 @@ st.markdown("""
 with st.sidebar:
     st.header("Settings")
 
-    
-
     st.markdown("---")
     st.subheader("Email Details") 
 
-    config.SMTP_EMAIL = st.text_input("Your Email (Required) ", value=config.SMTP_EMAIL, help="The email address you'll use to send invoices.")
-    config.SMTP_PASSWORD = st.text_input("App Password (Required)", type="password", value=config.SMTP_PASSWORD, help="Your email provider's App Password (not your regular login password).")
-    # config.SMTP_HOST = st.text_input("SMTP Host", value=config.SMTP_HOST)
-    # config.SMTP_PORT = int(st.text_input("SMTP Port", value=str(config.SMTP_PORT)))
+    st.text_input(
+        "Your Email (Required)", 
+        key="smtp_email", 
+        help="The email address you'll use to send invoices."
+    )
+    st.text_input(
+        "App Password (Required)", 
+        type="password", 
+        key="smtp_password", 
+        help="Your email provider's App Password (not your regular login password)."
+    )
+    # st.text_input("SMTP Host", key="smtp_host")
+    # st.text_input("SMTP Port", key="smtp_port")
 
     st.markdown("---")
     st.subheader("Sender Details")
-    config.COMPANY_NAME = st.text_input("Company Name", value=config.COMPANY_NAME)
-    config.SENDER_NAME = st.text_input("Your Name", value=config.SENDER_NAME)
-    config.SENDER_PHONE = st.text_input("Phone Number", value=config.SENDER_PHONE)
-    config.SENDER_EMAIL = st.text_input("Sender Email (for sign-off)", value=config.SENDER_EMAIL or config.SMTP_EMAIL)
+    st.text_input("Company Name", key="company_name")
+    st.text_input("Your Name", key="sender_name")
+    st.text_input("Phone Number", key="sender_phone")
+    st.text_input(
+        "Sender Email (for sign-off)", 
+        key="sender_email", 
+        help="Defaults to your login email if left empty."
+    )
 
 # ─── Title ────────────────────────────────────────────────
 st.title("Invoice Dispatcher Agent")
@@ -77,6 +88,20 @@ st.caption("Upload an invoice → AI drafts an email → Review & send.")
 st.markdown("---")
 
 # ─── Session state init ──────────────────────────────────
+# User-specific settings (initialized from config defaults)
+if "smtp_email" not in st.session_state:
+    st.session_state["smtp_email"] = config.SMTP_EMAIL
+if "smtp_password" not in st.session_state:
+    st.session_state["smtp_password"] = config.SMTP_PASSWORD
+if "company_name" not in st.session_state:
+    st.session_state["company_name"] = config.COMPANY_NAME
+if "sender_name" not in st.session_state:
+    st.session_state["sender_name"] = config.SENDER_NAME
+if "sender_phone" not in st.session_state:
+    st.session_state["sender_phone"] = config.SENDER_PHONE
+if "sender_email" not in st.session_state:
+    st.session_state["sender_email"] = config.SENDER_EMAIL or config.SMTP_EMAIL
+
 for key in ["agent_result", "subject", "body", "step", "file_bytes", "file_name", "customer_email", "chat_messages", "show_uploader", "all_files"]:
     if key not in st.session_state:
         if key == "chat_messages" or key == "all_files":
@@ -203,7 +228,7 @@ for msg in st.session_state["chat_messages"]:
             st.info(f"📄 Attached: {msg['attachment']}")
 
 # --- Check if credentials are filled ---
-credentials_filled = bool(config.SMTP_EMAIL and config.SMTP_PASSWORD)
+credentials_filled = bool(st.session_state["smtp_email"] and st.session_state["smtp_password"])
 
 if not credentials_filled:
     st.warning("⚠️ **Credentials Needed**: Please provide your **Email** and **App Password** in the sidebar to send invoices.")
@@ -272,7 +297,14 @@ if prompt_res:
                         images_b64 = file_to_images_b64(file_info["bytes"], file_info["name"])
                         all_images_b64.extend(images_b64)
                     
-                    result = run_agent(all_images_b64)
+                    sender_details = {
+                        "smtp_email": st.session_state["smtp_email"],
+                        "company_name": st.session_state["company_name"],
+                        "sender_name": st.session_state["sender_name"],
+                        "sender_phone": st.session_state["sender_phone"],
+                        "sender_email": st.session_state["sender_email"] or st.session_state["smtp_email"],
+                    }
+                    result = run_agent(all_images_b64, sender_details=sender_details)
                     
                     if result.get("error"):
                         response = f"I ran into a bit of a snag: {result['error']}"
@@ -333,6 +365,8 @@ elif st.session_state["step"] == "sending":
             to_email=st.session_state["customer_email"],
             subject=st.session_state["subject"],
             body=st.session_state["body"],
+            smtp_user=st.session_state["smtp_email"],
+            smtp_password=st.session_state["smtp_password"],
             attachments=st.session_state.get("all_files", []),
         )
     if result_msg == "ok":

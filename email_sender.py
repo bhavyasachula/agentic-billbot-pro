@@ -16,17 +16,19 @@ def send_email(
     to_email: str,
     subject: str,
     body: str,
+    smtp_user: str,
+    smtp_password: str,
     attachments: list[dict] | None = None, # List of {"bytes": ..., "name": ...}
 ) -> str:
     """
     Send an email via SMTP with optional attachments.
     Returns "ok" on success or an error message on failure.
     """
-    if not config.SMTP_EMAIL or not config.SMTP_PASSWORD:
+    if not smtp_user or not smtp_password:
         return "Credentials not configured. Add them in the Settings first"
 
     msg = MIMEMultipart()
-    msg["From"] = config.SMTP_EMAIL
+    msg["From"] = smtp_user
     msg["To"] = to_email
     msg["Subject"] = subject
 
@@ -47,8 +49,8 @@ def send_email(
     try:
         server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT)
         server.starttls()
-        server.login(config.SMTP_EMAIL, config.SMTP_PASSWORD)
-        server.sendmail(config.SMTP_EMAIL, to_email, msg.as_string())
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_user, to_email, msg.as_string())
         server.quit()
         return "ok"
     except Exception as e:
