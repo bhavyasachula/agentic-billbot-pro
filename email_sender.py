@@ -8,7 +8,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-import app
+
 import config
 
 
@@ -22,11 +22,11 @@ def send_email(
     Send an email via SMTP with optional attachments.
     Returns "ok" on success or an error message on failure.
     """
-    if not app.SMTP_EMAIL or not app.SMTP_PASSWORD:
+    if not config.SMTP_EMAIL or not config.SMTP_PASSWORD:
         return "Credentials not configured. Add them in the Settings first"
 
     msg = MIMEMultipart()
-    msg["From"] = app.SMTP_EMAIL
+    msg["From"] = config.SMTP_EMAIL
     msg["To"] = to_email
     msg["Subject"] = subject
 
@@ -47,8 +47,8 @@ def send_email(
     try:
         server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT)
         server.starttls()
-        server.login(app.SMTP_EMAIL, app.SMTP_PASSWORD)
-        server.sendmail(app.SMTP_EMAIL, to_email, msg.as_string())
+        server.login(config.SMTP_EMAIL, config.SMTP_PASSWORD)
+        server.sendmail(config.SMTP_EMAIL, to_email, msg.as_string())
         server.quit()
         return "ok"
     except Exception as e:
