@@ -122,7 +122,7 @@ st.markdown("""
 # ─── Title ────────────────────────────────────────────────
 
 st.caption("Chat with AI to Process Invoices and Send Emails.")
-
+st.caption("Wants to Send the Invoice Email? Just Say 'Send this to Customer@gmail.com' you are good to goo.. ")
 # ═══════════════════════════════════════════════════════════
 # CHATBOT INTERFACE
 # ═══════════════════════════════════════════════════════════
@@ -138,7 +138,7 @@ for msg in st.session_state["chat_messages"]:
 credentials_filled = bool(config.SMTP_EMAIL and config.SMTP_PASSWORD)
 
 if not credentials_filled:
-    st.warning("⚠️ **Connection Needed**: Please provide your **Email** and **App Password** in the sidebar to send invoices.")
+    st.warning("⚠️ **Credentials Needed**: Please provide your **Email** and **App Password** in the sidebar to send invoices.")
 
 # --- Chat input with File Attachment (Built-in) ---
 prompt_res = st.chat_input(
