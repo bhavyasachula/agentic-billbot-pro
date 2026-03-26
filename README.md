@@ -1,6 +1,6 @@
 # 📨 Agentic BillBot Pro
 
-**Agentic BillBot Pro** is a high-performance, agent-driven invoice processing and email dispatching system. Built with **LangGraph** and powered by **GPT-OSS-120B**, it transforms raw invoice PDFs and images into professional, context-aware email drafts ready for human-in-the-loop validation and one-click dispatching.
+**Agentic BillBot Pro** is a high-performance, agent-driven invoice processing and email dispatching system. Built with **LangGraph** and powered by **OPENAI**, it transforms raw invoice PDFs and images into professional, context-aware email drafts ready for human-in-the-loop validation and one-click dispatching.
 
 ---
 
@@ -59,7 +59,7 @@ Create a `.env` file in the root directory or configure directly in the Streamli
 
 ```env
 # AI Configuration
-GROQ_API_KEY=your_groq_api_key_here
+API_KEY=api_key_here
 
 # SMTP Configuration (Example for Gmail)
 SMTP_EMAIL=your-email@gmail.com
@@ -99,8 +99,4 @@ Enjoy a sleek, modern interface with:
 
 ---
 
-## 📄 License
-Distributed under the MIT License. See `LICENSE` for more information.
-
----
-*Developed with ❤️ by the bhavyasachula*
+*Developed by bhavyasachula*
