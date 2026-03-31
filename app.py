@@ -280,9 +280,9 @@ if prompt_res:
         # Detect trigger
         import re
         match_send = re.search(r"send this to ([\w\.-]+@[\w\.-]+\.\w+)", prompt.lower())
-        is_confirmation = re.search(r"\b(send|yes|send it|go ahead|yep|sure)\b", prompt.lower())
+        is_confirmation = re.search(r"\b(mokl|send|moklo|yes|send it|go ahead|yup|sure|bhejoo|bhejo|bhej)\b", prompt.lower())
         
-        from agent import chat_with_agent
+        from agent import chat_with_agent, chat_with_agent_stream, build_graph
 
         if match_send:
             target_email = match_send.group(1)
@@ -290,7 +290,7 @@ if prompt_res:
                 response = "I need an invoice first! Use the + icon inside the chat box to upload one. 📄"
             else:
                 st.session_state["customer_email"] = target_email
-                with st.status("I'm on it! Extracting and drafting your email...", expanded=False) as status:
+                with st.status("I'm on it! Processing your request...", expanded=True) as status:
                     # Process ALL uploaded files
                     all_images_b64 = []
                     for file_info in st.session_state["all_files"]:
@@ -304,20 +304,32 @@ if prompt_res:
                         "sender_phone": st.session_state["sender_phone"],
                         "sender_email": st.session_state["sender_email"] or st.session_state["smtp_email"],
                     }
-                    result = run_agent(all_images_b64, sender_details=sender_details)
                     
-                    if result.get("error"):
-                        response = f"I ran into a bit of a snag: {result['error']}"
+                    input_state = {"image_data": all_images_b64, "sender_details": sender_details}
+                    app = build_graph()
+                    
+                    final_state = {}
+                    for event in app.stream(input_state):
+                        for node_name, state_update in event.items():
+                            if node_name == "extract_invoice":
+                                status.update(label="✅ Invoice data extracted. Now drafting the email...")
+                            elif node_name == "draft_email":
+                                status.update(label="✅ Email draft ready!")
+                            final_state.update(state_update)
+                    
+                    if final_state.get("error"):
+                        response = f"I ran into a bit of a snag: {final_state['error']}"
                         status.update(label="Oops, something went wrong.", state="error")
                     else:
-                        st.session_state["agent_result"] = result
-                        st.session_state["subject"] = result.get("email_subject", "")
-                        st.session_state["body"] = result.get("email_body", "")
-                        sender_name = result.get("extracted_data", {}).get("sender_name", "the Sender")
+                        st.session_state["agent_result"] = final_state
+                        st.session_state["subject"] = final_state.get("email_subject", "")
+                        st.session_state["body"] = final_state.get("email_body", "")
+                        sender_name = final_state.get("extracted_data", {}).get("sender_name", "the Sender")
                         
                         response = f"I've tailored the email based on the {sender_name} receipt. Should I send it?"
                         status.update(label="Draft ready!", state="complete")
                         st.session_state["step"] = "review"
+
             
             st.session_state["chat_messages"].append({"role": "assistant", "content": response})
             with st.chat_message("assistant"):
@@ -330,13 +342,12 @@ if prompt_res:
             st.rerun()
         else:
             # General dynamic chat
-            with st.spinner("Thinking..."):
-                has_invoice = st.session_state.get("file_bytes") is not None
-                response = chat_with_agent(st.session_state["chat_messages"], has_invoice=has_invoice)
+            has_invoice = st.session_state.get("file_bytes") is not None
+            with st.chat_message("assistant"):
+                response = st.write_stream(chat_with_agent_stream(st.session_state["chat_messages"], has_invoice=has_invoice))
             
             st.session_state["chat_messages"].append({"role": "assistant", "content": response})
-            with st.chat_message("assistant"):
-                st.markdown(response)
+
 
 # ═══════════════════════════════════════════════════════════
 # REVIEW & SENDING AREA

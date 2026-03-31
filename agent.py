@@ -34,6 +34,27 @@ def chat_with_agent(messages: List[Dict], has_invoice: bool = False) -> str:
     except Exception as e:
         return f"I'm sorry, I'm having trouble connecting right now. Error: {e}"
 
+def chat_with_agent_stream(messages: List[Dict], has_invoice: bool = False):
+    """General conversational chat using gpt-oss-120b WITH STREAMING."""
+    llm = _get_llm()
+    
+    # Prepare messages for LangChain
+    lc_messages = [SystemMessage(content=GENERAL_CHAT_SYSTEM_PROMPT + f"\n\nContext: user_has_uploaded_invoice={has_invoice}")]
+    
+    for m in messages:
+        if m["role"] == "user":
+            lc_messages.append(HumanMessage(content=m["content"]))
+        elif m["role"] == "assistant":
+            lc_messages.append(AIMessage(content=m["content"]))
+            
+    try:
+        for chunk in llm.stream(lc_messages):
+            if chunk.content:
+                yield chunk.content
+    except Exception as e:
+        yield f"I'm sorry, I'm having trouble connecting right now. Error: {e}"
+
+
 # ─── Graph State ──────────────────────────────────────────
 class GraphState(TypedDict, total=False):
     image_data: List[str]         # list of base64-encoded images
@@ -49,7 +70,7 @@ def _get_llm():
     return ChatGroq(
         model="openai/gpt-oss-120b",
         temperature=config.TEMPERATURE,
-       api_key=st.secrets['GROQ_API_KEY']
+      # api_key=config.GROQ_API_KEY
     )
 
 
@@ -113,7 +134,7 @@ def draft_email(state: GraphState) -> Dict[str, Any]:
     # Sender info from passed-in details, then fallback to config
     company_name = sender_details.get("company_name") or config.COMPANY_NAME or "Our Company"
     sender_name = data.get("sender_name") or sender_details.get("sender_name") or config.SENDER_NAME or "the Billing Dept"
-    sender_phone = sender_details.get("sender_phone") or config.SENDER_PHONE or "N/A"
+    sender_phone = sender_details.get("sender_phone") or "N/A"
     sender_email = sender_details.get("sender_email") or config.SENDER_EMAIL or sender_details.get("smtp_email") or config.SMTP_EMAIL or "N/A"
 
     prompt = EMAIL_DRAFT_PROMPT.format(
