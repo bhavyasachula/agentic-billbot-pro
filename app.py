@@ -282,7 +282,7 @@ if prompt_res:
         match_send = re.search(r"send this to ([\w\.-]+@[\w\.-]+\.\w+)", prompt.lower())
         is_confirmation = re.search(r"\b(mokl|send|moklo|yes|send it|go ahead|yup|sure|bhejoo|bhejo|bhej)\b", prompt.lower())
         
-        from agent import chat_with_agent, chat_with_agent_stream, build_graph
+        from agent import chat_with_agent_stream, build_graph
 
         if match_send:
             target_email = match_send.group(1)
@@ -291,7 +291,7 @@ if prompt_res:
             else:
                 st.session_state["customer_email"] = target_email
                 with st.status("I'm on it! Processing your request...", expanded=True) as status:
-                    # Process ALL uploaded files
+                    # Process ALL uploaded invoice
                     all_images_b64 = []
                     for file_info in st.session_state["all_files"]:
                         images_b64 = file_to_images_b64(file_info["bytes"], file_info["name"])

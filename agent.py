@@ -15,24 +15,6 @@ import config
 from prompts import INVOICE_VISION_PROMPT, EMAIL_DRAFT_PROMPT, GENERAL_CHAT_SYSTEM_PROMPT
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
-def chat_with_agent(messages: List[Dict], has_invoice: bool = False) -> str:
-    """General conversational chat using gpt-oss-120b."""
-    llm = _get_llm()
-    
-    # Prepare messages for LangChain
-    lc_messages = [SystemMessage(content=GENERAL_CHAT_SYSTEM_PROMPT + f"\n\nContext: user_has_uploaded_invoice={has_invoice}")]
-    
-    for m in messages:
-        if m["role"] == "user":
-            lc_messages.append(HumanMessage(content=m["content"]))
-        elif m["role"] == "assistant":
-            lc_messages.append(AIMessage(content=m["content"]))
-            
-    try:
-        response = llm.invoke(lc_messages)
-        return response.content
-    except Exception as e:
-        return f"I'm sorry, I'm having trouble connecting right now. Error: {e}"
 
 def chat_with_agent_stream(messages: List[Dict], has_invoice: bool = False):
     """General conversational chat using gpt-oss-120b WITH STREAMING."""
@@ -70,7 +52,6 @@ def _get_llm():
     return ChatGroq(
         model="openai/gpt-oss-120b",
         temperature=config.TEMPERATURE,
-      # api_key=config.GROQ_API_KEY
     )
 
 
