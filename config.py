@@ -22,3 +22,5 @@ SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
 # Company / Sender details
 COMPANY_NAME: str = os.getenv("COMPANY_NAME", "")
 SENDER_NAME: str = os.getenv("SENDER_NAME", "")
+SENDER_PHONE: str = os.getenv("SENDER_PHONE", "")
+SENDER_EMAIL: str = os.getenv("SENDER_EMAIL", "")
