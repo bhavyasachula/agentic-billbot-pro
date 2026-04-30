@@ -1,20 +1,22 @@
 """
 Streamlit app — Agentic Invoice Dispatcher
 
+The agent (powered by create_tool_calling_agent + AgentExecutor) autonomously
+decides what actions to take based on user messages. No hardcoded regex routing.
+
 Flow:
-  1. User uploads invoice (PDF / image) + enters customer email
-  2. Agent extracts data & drafts email
-  3. User reviews → can edit subject & body (human-in-the-loop)
-  4. User clicks Send → email dispatched with invoice attached
+  1. User chats naturally → Agent decides if tools are needed
+  2. "Send this to x@y.com" → Agent calls extract_invoice → draft_email
+  3. "Yes / send it" → Agent calls send_email
+  4. General questions → Agent responds directly (no tools)
 """
 
 import json
 import streamlit as st
 import os
 
-from agent import run_agent  # AFTER setting env ✅
+from agent import run_agent_chat
 import config
-from file_utils import file_to_images_b64
 from email_sender import send_email
 
 # ─── Page config ──────────────────────────────────────────
@@ -68,8 +70,6 @@ with st.sidebar:
         key="smtp_password", 
         help="Your email provider's App Password (not your regular login password)."
     )
-    # st.text_input("SMTP Host", key="smtp_host")
-    # st.text_input("SMTP Port", key="smtp_port")
 
     st.markdown("---")
     st.subheader("Sender Details")
@@ -102,12 +102,11 @@ if "sender_phone" not in st.session_state:
 if "sender_email" not in st.session_state:
     st.session_state["sender_email"] = config.SENDER_EMAIL or config.SMTP_EMAIL
 
-for key in ["agent_result", "subject", "body", "step", "file_bytes", "file_name", "customer_email", "chat_messages", "show_uploader", "all_files"]:
+for key in ["subject", "body", "step", "file_bytes", "file_name", "customer_email", 
+            "chat_messages", "all_files", "extracted_invoice_data", "email_subject", "email_body"]:
     if key not in st.session_state:
-        if key == "chat_messages" or key == "all_files":
+        if key in ("chat_messages", "all_files"):
             st.session_state[key] = []
-        elif key == "show_uploader":
-            st.session_state[key] = False
         else:
             st.session_state[key] = None
 
@@ -215,7 +214,8 @@ st.markdown("""
 # ─── Title ────────────────────────────────────────────────
 
 st.caption("Chat with AI to Process Invoices and Send Emails.")
-st.caption("Wants to Send the Invoice Email? Just Say 'Send this to Customer@gmail.com' And You are Good to goo.. ")
+st.caption("Just say 'Send this to customer@gmail.com' and the agent handles everything! 🚀")
+
 # ═══════════════════════════════════════════════════════════
 # CHATBOT INTERFACE
 # ═══════════════════════════════════════════════════════════
@@ -277,76 +277,48 @@ if prompt_res:
         with st.chat_message("user"):
             st.write(prompt)
 
-        # Detect trigger
-        import re
-        match_send = re.search(r"send this to ([\w\.-]+@[\w\.-]+\.\w+)", prompt.lower())
-        is_confirmation = re.search(r"\b(mokl|send|moklo|yes|send it|go ahead|yup|sure|bhejoo|bhejo|bhej)\b", prompt.lower())
-        
-        from agent import chat_with_agent_stream, build_graph
+        # ─── AGENTIC EXECUTION ─────────────────────────────
+        # The agent autonomously decides what to do based on user input.
+        # No regex matching or hardcoded routing — the LLM reasons about intent.
+        with st.chat_message("assistant"):
+            with st.status("Agent is thinking...", expanded=True) as status:
+                try:
+                    result = run_agent_chat(
+                        user_input=prompt,
+                        chat_history=st.session_state["chat_messages"][:-1],  # exclude current msg
+                    )
 
-        if match_send:
-            target_email = match_send.group(1)
-            if "all_files" not in st.session_state or not st.session_state["all_files"]:
-                response = "I need an invoice first! Use the + icon inside the chat box to upload one. 📄"
-            else:
-                st.session_state["customer_email"] = target_email
-                with st.status("I'm on it! Processing your request...", expanded=True) as status:
-                    # Process ALL uploaded invoice
-                    all_images_b64 = []
-                    for file_info in st.session_state["all_files"]:
-                        images_b64 = file_to_images_b64(file_info["bytes"], file_info["name"])
-                        all_images_b64.extend(images_b64)
-                    
-                    sender_details = {
-                        "smtp_email": st.session_state["smtp_email"],
-                        "company_name": st.session_state["company_name"],
-                        "sender_name": st.session_state["sender_name"],
-                        "sender_phone": st.session_state["sender_phone"],
-                        "sender_email": st.session_state["sender_email"] or st.session_state["smtp_email"],
-                    }
-                    
-                    input_state = {"image_data": all_images_b64, "sender_details": sender_details}
-                    app = build_graph()
-                    
-                    final_state = {}
-                    for event in app.stream(input_state):
-                        for node_name, state_update in event.items():
-                            if node_name == "extract_invoice":
-                                status.update(label="✅ Invoice data extracted. Now drafting the email...")
-                            elif node_name == "draft_email":
-                                status.update(label="✅ Email draft ready!")
-                            final_state.update(state_update)
-                    
-                    if final_state.get("error"):
-                        response = f"I ran into a bit of a snag: {final_state['error']}"
-                        status.update(label="Oops, something went wrong.", state="error")
+                    tools_used = result.get("tools_used", [])
+                    response = result["output"]
+
+                    # Update status based on what tools the agent used
+                    if tools_used:
+                        tool_labels = []
+                        for t in tools_used:
+                            if t == "extract_invoice_tool":
+                                tool_labels.append("Extracted invoice data")
+                            elif t == "draft_email_tool":
+                                tool_labels.append("Drafted email")
+                            elif t == "send_email_tool":
+                                tool_labels.append("Sent email")
+                        status.update(
+                            label=" → ".join(tool_labels) + " ✅",
+                            state="complete"
+                        )
                     else:
-                        st.session_state["agent_result"] = final_state
-                        st.session_state["subject"] = final_state.get("email_subject", "")
-                        st.session_state["body"] = final_state.get("email_body", "")
-                        sender_name = final_state.get("extracted_data", {}).get("sender_name", "the Sender")
-                        
-                        response = f"I've tailored the email based on the {sender_name} receipt. Should I send it?"
-                        status.update(label="Draft ready!", state="complete")
-                        st.session_state["step"] = "review"
+                        status.update(label="💬 Response ready", state="complete")
 
-            
-            st.session_state["chat_messages"].append({"role": "assistant", "content": response})
-            with st.chat_message("assistant"):
-                st.markdown(response)
-                if "Should I send it?" in response:
-                    st.info("💡 You can review the draft below or just say 'Yes'.")
+                except Exception as e:
+                    response = f"I ran into an issue: {e}"
+                    status.update(label="⚠️ Something went wrong", state="error")
 
-        elif is_confirmation and st.session_state.get("agent_result") and st.session_state["step"] == "review":
-            st.session_state["step"] = "sending"
-            st.rerun()
-        else:
-            # General dynamic chat
-            has_invoice = st.session_state.get("file_bytes") is not None
-            with st.chat_message("assistant"):
-                response = st.write_stream(chat_with_agent_stream(st.session_state["chat_messages"], has_invoice=has_invoice))
-            
-            st.session_state["chat_messages"].append({"role": "assistant", "content": response})
+            st.markdown(response)
+
+            # Show review hint if a draft was created
+            if st.session_state.get("step") == "review":
+                st.info("💡 You can review and edit the draft below, or just say 'Yes' to send it.")
+
+        st.session_state["chat_messages"].append({"role": "assistant", "content": response})
 
 
 # ═══════════════════════════════════════════════════════════
@@ -354,11 +326,19 @@ if prompt_res:
 # ═══════════════════════════════════════════════════════════
 if st.session_state["step"] == "review":
     st.markdown("---")
-    st.markdown("### 📝 Review Email Draft")
+    st.markdown("### Review Email Draft")
     with st.container(border=True):
         st.markdown(f"**To:** {st.session_state.get('customer_email', '')}")
-        st.session_state["subject"] = st.text_input("Subject", value=st.session_state["subject"])
-        st.session_state["body"] = st.text_area("Email Body", value=st.session_state["body"], height=300)
+        
+        # Use email_subject/email_body (set by agent tools) with fallback
+        subject_val = st.session_state.get("email_subject") or st.session_state.get("subject") or ""
+        body_val = st.session_state.get("email_body") or st.session_state.get("body") or ""
+        
+        st.session_state["email_subject"] = st.text_input("Subject", value=subject_val)
+        st.session_state["email_body"] = st.text_area("Email Body", value=body_val, height=300)
+        # Keep old keys in sync for backward compat
+        st.session_state["subject"] = st.session_state["email_subject"]
+        st.session_state["body"] = st.session_state["email_body"]
 
         col1, col2 = st.columns(2)
         with col1:
@@ -374,8 +354,8 @@ elif st.session_state["step"] == "sending":
     with st.spinner("Dispatching email..."):
         result_msg = send_email(
             to_email=st.session_state["customer_email"],
-            subject=st.session_state["subject"],
-            body=st.session_state["body"],
+            subject=st.session_state.get("email_subject") or st.session_state.get("subject", ""),
+            body=st.session_state.get("email_body") or st.session_state.get("body", ""),
             smtp_user=st.session_state["smtp_email"],
             smtp_password=st.session_state["smtp_password"],
             attachments=st.session_state.get("all_files", []),
@@ -388,11 +368,13 @@ elif st.session_state["step"] == "sending":
         st.session_state["step"] = "review"
 
 elif st.session_state["step"] == "done":
-    st.balloons()
     st.success(f"✅ Email sent successfully to {st.session_state['customer_email']}!")
     if st.button("Start New Case"):
-        for key in ["agent_result", "subject", "body", "customer_email", "chat_messages", "file_bytes", "file_name", "all_files"]:
-            st.session_state[key] = None if key != "chat_messages" else []
+        for key in ["subject", "body", "customer_email", "chat_messages", "file_bytes", 
+                     "file_name", "all_files", "extracted_invoice_data", "email_subject", "email_body"]:
+            st.session_state[key] = None if key not in ("chat_messages", "all_files") else []
         st.session_state["step"] = "upload"
         st.rerun()
+
+
 
