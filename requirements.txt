@@ -2,6 +2,7 @@ streamlit
 langgraph
 langchain
 langchain-openai
+langchain-classic
 langchain-core
 python-dotenv
 pydantic
